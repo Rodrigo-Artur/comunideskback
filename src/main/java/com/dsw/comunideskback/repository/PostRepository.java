@@ -1,27 +1,20 @@
 package com.dsw.comunideskback.repository;
 
 import com.dsw.comunideskback.model.Post;
-
-import jakarta.transaction.Transactional;
-
-import java.time.LocalDateTime;
-
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
+import org.springframework.data.jpa.repository.Modifying; // Necessário para @Modifying
+import org.springframework.data.jpa.repository.Query;     // Necessário para @Query
+import org.springframework.transaction.annotation.Transactional; // Necessário para transações
+import java.util.List;
+import java.time.LocalDateTime; // Import para LocalDateTime
 
-@Repository
-public interface PostRepository extends JpaRepository<Post, Long> {
-    // O Spring Data JPA cria automaticamente os métodos:
-    // save() -> Cria e Atualiza
-    // findById() -> Busca por ID
-    // findAll() -> Busca Todos
-    // deleteById() -> Deleta por ID
-    // ....
-    @Modifying
+public interface PostRepository extends JpaRepository<Post, String> {
+    
+    List<Post> findByAtivoTrue();
+
+    // MUDANÇA: Adicionando o método customizado que o PostExpirationService precisa
     @Transactional
-    @Query("UPDATE Post p SET p.ativo = false WHERE p.ativo = true AND p.dataCriacao < :dataLimite")
-    void desativarPostsAntigos(@Param("dataLimite") LocalDateTime dataLimite);
+    @Modifying
+    @Query("UPDATE Post p SET p.ativo = false WHERE p.expirationDate < :dataLimite AND p.ativo = true")
+    void desativarPostsAntigos(LocalDateTime dataLimite);
 }

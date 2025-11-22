@@ -6,74 +6,54 @@ import com.dsw.comunideskback.dto.RegisterRequestDTO;
 import com.dsw.comunideskback.model.Usuario;
 import com.dsw.comunideskback.repository.UsuarioRepository;
 import com.dsw.comunideskback.service.TokenService;
+import jakarta.validation.Valid; // Agora o Maven vai encontrar isso
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/auth") // URL base para autenticação
+@RequestMapping("/api/auth")
+@CrossOrigin(origins = "*")
 public class AuthenticationController {
 
     @Autowired
     private AuthenticationManager authenticationManager;
 
     @Autowired
-    private UsuarioRepository usuarioRepository;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+    private UsuarioRepository repository;
 
     @Autowired
     private TokenService tokenService;
 
-    /**
-     * Endpoint para LOGIN de usuário.
-     * URL: POST /api/auth/login
-     */
     @PostMapping("/login")
-    public ResponseEntity<LoginResponseDTO> login(@RequestBody LoginRequestDTO data) {
-        // Cria o "pacote" de autenticação com login e senha
-        var usernamePassword = new UsernamePasswordAuthenticationToken(data.login(), data.senha());
-        
-        // O Spring Security tenta autenticar
+    public ResponseEntity login(@RequestBody @Valid LoginRequestDTO data){
+        // Se o LoginRequestDTO usar 'password', chamamos .password()
+        var usernamePassword = new UsernamePasswordAuthenticationToken(data.login(), data.password());
         var auth = this.authenticationManager.authenticate(usernamePassword);
 
-        // Se der certo, gera o token
         var token = tokenService.generateToken((Usuario) auth.getPrincipal());
 
-        // Retorna o DTO de resposta com o token
-        return ResponseEntity.ok(new LoginResponseDTO(token));
+        // Agora o DTO aceita (String, Usuario), então isso vai compilar
+        return ResponseEntity.ok(new LoginResponseDTO(token, (Usuario) auth.getPrincipal()));
     }
 
-    /**
-     * Endpoint para REGISTRO de novo usuário.
-     * URL: POST /api/auth/register
-     */
     @PostMapping("/register")
-    // uma String (no erro) ou Vazio (no sucesso).
-    public ResponseEntity<?> register(@RequestBody RegisterRequestDTO data) {
-        // Verifica se o login já existe
-        if (this.usuarioRepository.findByLogin(data.login()) != null) {
-            // O corpo aqui é uma String
+    public ResponseEntity register(@RequestBody @Valid RegisterRequestDTO data){
+        if(this.repository.findByLogin(data.login()).isPresent()) {
             return ResponseEntity.badRequest().body("Erro: Login já está em uso!");
         }
 
-        // Criptografa a senha antes de salvar
-        String encryptedPassword = passwordEncoder.encode(data.senha());
+        // Se o RegisterRequestDTO usar 'password', chamamos .password()
+        String encryptedPassword = new BCryptPasswordEncoder().encode(data.password());
         
-        // Cria o novo objeto Usuário
-        Usuario novoUsuario = new Usuario(data.login(), encryptedPassword, data.role());
+        // Assume que o construtor do Usuario aceita (login, senha, role)
+        Usuario newUser = new Usuario(data.login(), encryptedPassword, data.role());
 
-        // Salva o novo usuário no banco
-        this.usuarioRepository.save(novoUsuario);
+        this.repository.save(newUser);
 
-        // O corpo aqui é vazio (build())
-        return ResponseEntity.ok().build(); // Retorna 200 OK (sem corpo)
+        return ResponseEntity.ok().build();
     }
 }
