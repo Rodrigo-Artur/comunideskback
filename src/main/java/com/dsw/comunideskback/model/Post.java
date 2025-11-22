@@ -5,8 +5,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonIgnore; 
+import com.fasterxml.jackson.annotation.JsonProperty; // Importante
 import org.springframework.security.core.userdetails.UserDetails;
-
+import com.dsw.comunideskback.model.PostType;
 
 @Entity
 @Table(name = "posts")
@@ -42,12 +43,13 @@ public class Post {
     
     @ManyToOne
     @JoinColumn(name = "usuario_id")
-    @JsonIgnoreProperties({"senha", "role", "posts"}) 
+    @JsonIgnoreProperties({"senha", "role", "posts", "authorities", "password", "username", "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled"}) 
     private Usuario usuario;
 
     public Post() {}
 
-    // Getters e Setters
+    // --- GETTERS E SETTERS ---
+
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
     public String getTitle() { return title; }
@@ -67,11 +69,22 @@ public class Post {
     public LocalDateTime getExpirationDate() { return expirationDate; }
     public void setExpirationDate(LocalDateTime expirationDate) { this.expirationDate = expirationDate; }
 
-    public Usuario getUser() { return usuario; }
-    public void setUser(Usuario usuario) { this.usuario = usuario; }
-    public Usuario getUsuario() { return usuario; }
-    public void setUsuario(Usuario usuario) { this.usuario = usuario; }
+    // --- JSON PROPERTY: Força o nome "autor" no JSON ---
+    
+    @JsonProperty("autor") 
+    public Usuario getUsuario() { 
+        return usuario; 
+    }
 
+    public void setUsuario(Usuario usuario) { 
+        this.usuario = usuario; 
+    }
+
+    // Métodos de compatibilidade e UserDetails
+    
+    @JsonIgnore
+    public Usuario getUser() { return usuario; }
+    
     @JsonIgnore
     public void setUser(Object principal) {
         if (principal instanceof Usuario) {

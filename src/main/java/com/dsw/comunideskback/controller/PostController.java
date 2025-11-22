@@ -2,6 +2,7 @@ package com.dsw.comunideskback.controller;
 
 import com.dsw.comunideskback.model.Post;
 import com.dsw.comunideskback.model.Usuario;
+// MUDANÇA: Import corrigido para o novo local (sem .enums)
 import com.dsw.comunideskback.model.PostType;
 import com.dsw.comunideskback.repository.PostRepository;
 import com.dsw.comunideskback.repository.UsuarioRepository;
@@ -67,8 +68,13 @@ public class PostController {
         if (postOpt.isPresent()) {
             Post postExistente = postOpt.get();
             
-            if (!postExistente.getUsuario().getLogin().equals(userDetails.getUsername())) {
-                return ResponseEntity.status(403).body("Acesso negado.");
+            // VERIFICAÇÃO DE PERMISSÃO: Dono OU Admin
+            boolean isOwner = postExistente.getUsuario().getLogin().equals(userDetails.getUsername());
+            boolean isAdmin = userDetails.getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+            if (!isOwner && !isAdmin) {
+                return ResponseEntity.status(403).body("Acesso negado: Você não tem permissão para editar este post.");
             }
 
             postExistente.setTitle(postAtualizado.getTitle());
@@ -89,8 +95,13 @@ public class PostController {
         if (postOpt.isPresent()) {
             Post post = postOpt.get();
 
-            if (!post.getUsuario().getLogin().equals(userDetails.getUsername())) {
-                return ResponseEntity.status(403).body("Acesso negado.");
+            // VERIFICAÇÃO DE PERMISSÃO: Dono OU Admin
+            boolean isOwner = post.getUsuario().getLogin().equals(userDetails.getUsername());
+            boolean isAdmin = userDetails.getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+            if (!isOwner && !isAdmin) {
+                return ResponseEntity.status(403).body("Acesso negado: Você não tem permissão para excluir este post.");
             }
 
             post.setAtivo(false);
